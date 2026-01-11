@@ -1,0 +1,15 @@
+apiVersion: policywall.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: pod-security-policy
+  namespace: default
+spec:
+  template: pod-security
+  rules:
+    - "p, default, privileged, deny"
+    - "p, kube-system, privileged, allow"
+  failurePolicy: Fail
+  dryRun: false
+  namespaceSelector:
+    matchLabels:
+      policy: enabled

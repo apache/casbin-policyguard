@@ -1,0 +1,17 @@
+apiVersion: v2
+name: policywall
+description: A Kubernetes admission policy controller powered by Casbin
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - casbin
+  - admission
+  - policy
+  - security
+home: https://github.com/casbin/policywall
+sources:
+  - https://github.com/casbin/policywall
+maintainers:
+  - name: Casbin
+    url: https://casbin.org

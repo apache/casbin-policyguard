@@ -1,0 +1,13 @@
+apiVersion: policywall.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: namespace-isolation-policy
+  namespace: default
+spec:
+  template: namespace-isolation
+  rules:
+    - "p, prod, cross-namespace, deny"
+    - "p, dev, cross-namespace, allow"
+    - "p, admin, cross-namespace, allow"
+  failurePolicy: Fail
+  dryRun: true

@@ -1,0 +1,15 @@
+apiVersion: policywall.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: image-validation-policy
+  namespace: default
+spec:
+  template: image-validation
+  rules:
+    - "p, *, latest, deny"
+    - "p, *, gcr.io, allow"
+    - "p, *, docker.io, allow"
+  failurePolicy: Fail
+  dryRun: false
+  parameters:
+    allowedRegistries: "gcr.io,docker.io"
