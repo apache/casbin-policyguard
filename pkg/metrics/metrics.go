@@ -25,7 +25,6 @@ import (
 type Collector struct {
 	admissionRequests *prometheus.CounterVec
 	policyEvaluations *prometheus.HistogramVec
-	registry          *prometheus.Registry
 }
 
 // NewCollector creates a new metrics collector

@@ -129,11 +129,15 @@ func (s *Server) admit(ar admissionv1.AdmissionReview) *admissionv1.AdmissionRev
 // HandleHealth handles health check requests
 func (s *Server) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ok"))
+	if _, err := w.Write([]byte("ok")); err != nil {
+		klog.Errorf("failed to write health response: %v", err)
+	}
 }
 
 // HandleReady handles readiness check requests
 func (s *Server) HandleReady(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("ready"))
+	if _, err := w.Write([]byte("ready")); err != nil {
+		klog.Errorf("failed to write ready response: %v", err)
+	}
 }
