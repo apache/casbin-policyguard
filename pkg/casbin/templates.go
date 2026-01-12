@@ -16,9 +16,9 @@ package casbin
 
 // PolicyTemplate defines a reusable policy template
 type PolicyTemplate struct {
-	Name        string
-	Description string
-	Model       string
+	Name         string
+	Description  string
+	Model        string
 	DefaultRules []string
 }
 

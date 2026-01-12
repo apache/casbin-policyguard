@@ -107,8 +107,8 @@ func main() {
 
 	// Create HTTPS server
 	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", port),
-		Handler:   mux,
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
 		TLSConfig: &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		},

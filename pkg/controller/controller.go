@@ -67,11 +67,13 @@ func (pc *PolicyController) Run() error {
 		cache.Indexers{},
 	)
 
-	pc.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+	if _, err := pc.informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    pc.onAdd,
 		UpdateFunc: pc.onUpdate,
 		DeleteFunc: pc.onDelete,
-	})
+	}); err != nil {
+		return fmt.Errorf("failed to add event handler: %w", err)
+	}
 
 	go pc.informer.Run(pc.stopCh)
 
@@ -98,7 +100,7 @@ func (pc *PolicyController) onAdd(obj interface{}) {
 	}
 
 	klog.Infof("Adding policy: %s/%s", policy.Namespace, policy.Name)
-	
+
 	modelText := policy.Spec.Model
 	if policy.Spec.Template != "" {
 		if tmpl, ok := casbin.GetTemplate(policy.Spec.Template); ok {
@@ -132,7 +134,7 @@ func (pc *PolicyController) onUpdate(oldObj, newObj interface{}) {
 
 	// Remove old policy and add new one
 	pc.enforcer.RemovePolicy(fmt.Sprintf("%s/%s", oldPolicy.Namespace, oldPolicy.Name))
-	
+
 	modelText := newPolicy.Spec.Model
 	if newPolicy.Spec.Template != "" {
 		if tmpl, ok := casbin.GetTemplate(newPolicy.Spec.Template); ok {

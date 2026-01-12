@@ -32,7 +32,6 @@ import (
 type Server struct {
 	enforcer *casbin.PolicyEnforcer
 	metrics  *metrics.Collector
-	dryRun   bool
 }
 
 // NewServer creates a new webhook server
@@ -88,7 +87,7 @@ func (s *Server) HandleAdmission(w http.ResponseWriter, r *http.Request) {
 // admit performs the admission logic
 func (s *Server) admit(ar admissionv1.AdmissionReview) *admissionv1.AdmissionReview {
 	req := ar.Request
-	var allowed = true
+	var allowed bool
 	var msg string
 
 	klog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v UID=%v Operation=%v",
@@ -103,7 +102,7 @@ func (s *Server) admit(ar admissionv1.AdmissionReview) *admissionv1.AdmissionRev
 		// In production, this would match policies based on namespace selectors
 		allowed = true
 		msg = "allowed by policy"
-		
+
 		s.metrics.RecordAdmissionRequest(string(req.Operation), allowed)
 	}
 
