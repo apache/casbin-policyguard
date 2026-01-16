@@ -130,9 +130,12 @@ func (pe *PolicyEnforcer) Enforce(ctx context.Context, obj runtime.Object, usern
 		Validations: []ValidationResult{},
 	}
 
-	// Get resource type
+	// Get resource type from GVK
 	gvk := obj.GetObjectKind().GroupVersionKind()
-	resourceType := strings.ToLower(gvk.Kind) + "s"
+	resourceType := gvk.Kind
+
+	// Normalize resource type to lowercase for comparison
+	resourceTypeLower := strings.ToLower(resourceType)
 
 	// Load all policies
 	var policyList policyv1alpha1.PolicyList
@@ -150,7 +153,7 @@ func (pe *PolicyEnforcer) Enforce(ctx context.Context, obj runtime.Object, usern
 	// Process each policy
 	for _, policy := range policyList.Items {
 		// Check if policy applies to this resource
-		if !pe.policyAppliesTo(&policy, resourceType, u) {
+		if !pe.policyAppliesTo(&policy, resourceTypeLower, u) {
 			continue
 		}
 
@@ -196,10 +199,19 @@ func (pe *PolicyEnforcer) policyAppliesTo(policy *policyv1alpha1.Policy, resourc
 	namespace := obj.GetNamespace()
 
 	for _, rs := range policy.Spec.Resources {
-		// Check if resource type matches
+		// Check if resource type matches (support both singular and plural forms)
 		resourceMatches := false
 		for _, res := range rs.Resources {
-			if strings.ToLower(res) == strings.ToLower(resourceType) || res == "*" {
+			resLower := strings.ToLower(res)
+			// Match if:
+			// 1. Exact match (case insensitive)
+			// 2. Wildcard match
+			// 3. Singular matches plural (e.g., "pod" matches "pod" or "pods")
+			// 4. Plural matches singular (e.g., "pods" matches "pod")
+			if resLower == resourceType ||
+				res == "*" ||
+				resLower == resourceType+"s" ||
+				resLower+"s" == resourceType {
 				resourceMatches = true
 				break
 			}
@@ -329,9 +341,11 @@ func GenerateSidecarInjectionPatch(containerName, image string) []PatchOperation
 		Image: image,
 	}
 
+	// Marshal container to JSON (error ignored as Container is a known type that always marshals successfully)
 	containerJSON, _ := json.Marshal(sidecarContainer)
 	var containerMap map[string]interface{}
-	json.Unmarshal(containerJSON, &containerMap)
+	// Unmarshal to map (error ignored as valid JSON from Marshal above)
+	_ = json.Unmarshal(containerJSON, &containerMap)
 
 	return []PatchOperation{
 		{

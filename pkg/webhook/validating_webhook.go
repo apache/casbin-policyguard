@@ -2,9 +2,10 @@ package webhook
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -13,7 +14,6 @@ import (
 // ValidatingWebhook handles validating admission requests
 type ValidatingWebhook struct {
 	client   client.Client
-	decoder  admission.Decoder
 	enforcer *PolicyEnforcer
 }
 
@@ -36,10 +36,9 @@ func (v *ValidatingWebhook) Handle(ctx context.Context, req admission.Request) a
 		"username", req.UserInfo.Username,
 	)
 
-	// Decode the object
-	obj := &corev1.Pod{}
-	err := v.decoder.Decode(req, obj)
-	if err != nil {
+	// Decode the object as unstructured to support any resource type
+	obj := &unstructured.Unstructured{}
+	if err := json.Unmarshal(req.Object.Raw, obj); err != nil {
 		logger.Error(err, "failed to decode object")
 		return admission.Errored(http.StatusBadRequest, err)
 	}
@@ -67,10 +66,4 @@ func (v *ValidatingWebhook) Handle(ctx context.Context, req admission.Request) a
 
 	logger.Info("validation passed")
 	return admission.Allowed("validation passed")
-}
-
-// InjectDecoder injects the decoder
-func (v *ValidatingWebhook) InjectDecoder(d admission.Decoder) error {
-	v.decoder = d
-	return nil
 }

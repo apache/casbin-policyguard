@@ -85,12 +85,12 @@ func main() {
 	validatingWebhook := webhookpkg.NewValidatingWebhook(mgr.GetClient(), enforcer)
 
 	// Register mutating webhook
-	mgr.GetWebhookServer().Register("/mutate-v1-pod", &webhook.Admission{
+	mgr.GetWebhookServer().Register("/mutate", &webhook.Admission{
 		Handler: mutatingWebhook,
 	})
 
 	// Register validating webhook
-	mgr.GetWebhookServer().Register("/validate-v1-pod", &webhook.Admission{
+	mgr.GetWebhookServer().Register("/validate", &webhook.Admission{
 		Handler: validatingWebhook,
 	})
 

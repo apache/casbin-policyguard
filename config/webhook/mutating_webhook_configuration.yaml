@@ -5,13 +5,13 @@ metadata:
   annotations:
     cert-manager.io/inject-ca-from: policywall-system/policywall-webhook-cert
 webhooks:
-- name: mpod.policy.casbin.org
+- name: mutate.policy.casbin.org
   admissionReviewVersions: ["v1", "v1beta1"]
   clientConfig:
     service:
       name: policywall-webhook-service
       namespace: policywall-system
-      path: /mutate-v1-pod
+      path: /mutate
   failurePolicy: Fail
   matchPolicy: Equivalent
   namespaceSelector:
@@ -22,10 +22,10 @@ webhooks:
   objectSelector: {}
   reinvocationPolicy: Never
   rules:
-  - apiGroups: [""]
-    apiVersions: ["v1"]
+  - apiGroups: ["*"]
+    apiVersions: ["*"]
     operations: ["CREATE", "UPDATE"]
-    resources: ["pods"]
+    resources: ["*"]
     scope: "*"
   sideEffects: None
   timeoutSeconds: 10

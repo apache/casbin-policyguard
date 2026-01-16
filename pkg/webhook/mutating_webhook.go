@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -14,7 +14,6 @@ import (
 // MutatingWebhook handles mutating admission requests
 type MutatingWebhook struct {
 	client   client.Client
-	decoder  admission.Decoder
 	enforcer *PolicyEnforcer
 }
 
@@ -37,10 +36,9 @@ func (m *MutatingWebhook) Handle(ctx context.Context, req admission.Request) adm
 		"username", req.UserInfo.Username,
 	)
 
-	// Decode the object
-	obj := &corev1.Pod{}
-	err := m.decoder.Decode(req, obj)
-	if err != nil {
+	// Decode the object as unstructured to support any resource type
+	obj := &unstructured.Unstructured{}
+	if err := json.Unmarshal(req.Object.Raw, obj); err != nil {
 		logger.Error(err, "failed to decode object")
 		return admission.Errored(http.StatusBadRequest, err)
 	}
@@ -69,10 +67,4 @@ func (m *MutatingWebhook) Handle(ctx context.Context, req admission.Request) adm
 
 	// Return a patched response
 	return admission.PatchResponseFromRaw(req.Object.Raw, patchBytes)
-}
-
-// InjectDecoder injects the decoder
-func (m *MutatingWebhook) InjectDecoder(d admission.Decoder) error {
-	m.decoder = d
-	return nil
 }
