@@ -386,21 +386,34 @@ func (pe *PolicyEnforcer) generateSidecarTemplate(params map[string]string) (int
 
 	// Optional parameters
 	if cpu := params["cpu"]; cpu != "" {
+		qty, err := parseQuantity(cpu)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cpu quantity '%s': %w", cpu, err)
+		}
 		if container.Resources.Limits == nil {
 			container.Resources.Limits = corev1.ResourceList{}
 		}
-		container.Resources.Limits[corev1.ResourceCPU] = parseQuantity(cpu)
+		container.Resources.Limits[corev1.ResourceCPU] = qty
 	}
 	if memory := params["memory"]; memory != "" {
+		qty, err := parseQuantity(memory)
+		if err != nil {
+			return nil, fmt.Errorf("invalid memory quantity '%s': %w", memory, err)
+		}
 		if container.Resources.Limits == nil {
 			container.Resources.Limits = corev1.ResourceList{}
 		}
-		container.Resources.Limits[corev1.ResourceMemory] = parseQuantity(memory)
+		container.Resources.Limits[corev1.ResourceMemory] = qty
 	}
 
-	containerJSON, _ := json.Marshal(container)
+	containerJSON, err := json.Marshal(container)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal container: %w", err)
+	}
 	var containerMap map[string]interface{}
-	_ = json.Unmarshal(containerJSON, &containerMap)
+	if err := json.Unmarshal(containerJSON, &containerMap); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal container to map: %w", err)
+	}
 	return containerMap, nil
 }
 
@@ -428,13 +441,12 @@ func (pe *PolicyEnforcer) generateLabelsTemplate(params map[string]string) (inte
 }
 
 // parseQuantity parses a resource quantity string
-func parseQuantity(s string) resource.Quantity {
+func parseQuantity(s string) (resource.Quantity, error) {
 	qty, err := resource.ParseQuantity(s)
 	if err != nil {
-		// Return zero quantity on error
-		return resource.Quantity{}
+		return resource.Quantity{}, fmt.Errorf("failed to parse quantity: %w", err)
 	}
-	return qty
+	return qty, nil
 }
 
 // Common mutation helpers
