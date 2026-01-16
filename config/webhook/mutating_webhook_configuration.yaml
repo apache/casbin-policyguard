@@ -2,6 +2,8 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: policywall-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: policywall-system/policywall-webhook-cert
 webhooks:
 - name: mpod.policy.casbin.org
   admissionReviewVersions: ["v1", "v1beta1"]

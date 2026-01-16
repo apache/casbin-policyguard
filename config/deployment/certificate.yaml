@@ -1,0 +1,22 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: policywall-selfsigned-issuer
+  namespace: policywall-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: policywall-webhook-cert
+  namespace: policywall-system
+spec:
+  secretName: policywall-webhook-cert
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
+  dnsNames:
+  - policywall-webhook-service.policywall-system.svc
+  - policywall-webhook-service.policywall-system.svc.cluster.local
+  issuerRef:
+    name: policywall-selfsigned-issuer

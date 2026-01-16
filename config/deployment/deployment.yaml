@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policywall-system
+  labels:
+    app.kubernetes.io/name: policywall
+    app.kubernetes.io/component: webhook
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: policywall-webhook
+  namespace: policywall-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: policywall-webhook
+rules:
+- apiGroups: ["policy.casbin.org"]
+  resources: ["policies"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: policywall-webhook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: policywall-webhook
+subjects:
+- kind: ServiceAccount
+  name: policywall-webhook
+  namespace: policywall-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policywall-webhook-service
+  namespace: policywall-system
+spec:
+  selector:
+    app: policywall-webhook
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: 9443
+    protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policywall-webhook
+  namespace: policywall-system
+  labels:
+    app: policywall-webhook
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: policywall-webhook
+  template:
+    metadata:
+      labels:
+        app: policywall-webhook
+    spec:
+      serviceAccountName: policywall-webhook
+      containers:
+      - name: webhook
+        image: policywall:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+      volumes:
+      - name: cert
+        secret:
+          secretName: policywall-webhook-cert

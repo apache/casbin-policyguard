@@ -2,6 +2,8 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: policywall-validating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: policywall-system/policywall-webhook-cert
 webhooks:
 - name: vpod.policy.casbin.org
   admissionReviewVersions: ["v1", "v1beta1"]
