@@ -40,6 +40,30 @@ type MatchRule struct {
 	Operations []string `json:"operations,omitempty"`
 }
 
+// ViolationResource represents a resource that violated a policy
+type ViolationResource struct {
+	// Kind is the resource kind (e.g., Pod, Deployment)
+	Kind string `json:"kind"`
+
+	// Namespace is the resource namespace
+	Namespace string `json:"namespace"`
+
+	// Name is the resource name
+	Name string `json:"name"`
+
+	// Operation is the operation that was attempted (CREATE, UPDATE, DELETE)
+	Operation string `json:"operation"`
+
+	// Timestamp is when the violation occurred
+	Timestamp metav1.Time `json:"timestamp"`
+
+	// User is the user who attempted the operation
+	User string `json:"user,omitempty"`
+
+	// Message is the violation reason
+	Message string `json:"message,omitempty"`
+}
+
 // AdmissionPolicyStatus defines the observed state of AdmissionPolicy
 type AdmissionPolicyStatus struct {
 	// Ready indicates whether the policy is loaded and ready
@@ -56,6 +80,10 @@ type AdmissionPolicyStatus struct {
 	// ViolationCount tracks the number of violations detected (in dry-run mode)
 	// +optional
 	ViolationCount int64 `json:"violationCount,omitempty"`
+
+	// RecentViolations contains the most recent violations (limited to last 10)
+	// +optional
+	RecentViolations []ViolationResource `json:"recentViolations,omitempty"`
 }
 
 // +kubebuilder:object:root=true

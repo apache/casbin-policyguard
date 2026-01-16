@@ -74,6 +74,34 @@ spec:
                 type: integer
                 format: int64
                 description: Number of violations detected in dry-run mode
+              recentViolations:
+                type: array
+                description: Most recent violations (limited to last 10)
+                items:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                      description: Resource kind (e.g., Pod, Deployment)
+                    namespace:
+                      type: string
+                      description: Resource namespace
+                    name:
+                      type: string
+                      description: Resource name
+                    operation:
+                      type: string
+                      description: Operation attempted (CREATE, UPDATE, DELETE)
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: When the violation occurred
+                    user:
+                      type: string
+                      description: User who attempted the operation
+                    message:
+                      type: string
+                      description: Violation reason
     additionalPrinterColumns:
     - name: DryRun
       type: boolean

@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/casbin/policywall/api/v1alpha1"
@@ -16,7 +18,9 @@ import (
 )
 
 const (
-	finalizerName = "policy.casbin.org/finalizer"
+	finalizerName        = "policy.casbin.org/finalizer"
+	maxRecentViolations  = 10
+	statusUpdateInterval = 30 * time.Second
 )
 
 // AdmissionPolicyReconciler reconciles AdmissionPolicy objects
@@ -24,6 +28,13 @@ type AdmissionPolicyReconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
 	WebhookServer *webhook.WebhookServer
+
+	// Track violations per policy
+	mu         sync.RWMutex
+	violations map[string][]v1alpha1.ViolationResource
+
+	// Last status update time per policy
+	lastStatusUpdate map[string]time.Time
 }
 
 // Reconcile handles AdmissionPolicy changes
@@ -71,13 +82,30 @@ func (r *AdmissionPolicyReconciler) Reconcile(ctx context.Context, req reconcile
 		return reconcile.Result{RequeueAfter: 30 * time.Second}, err
 	}
 
-	// Update status to reflect success
+	// Update status to reflect success with recent violations
+	r.mu.RLock()
+	recentViolations := r.violations[policy.Name]
+	violationCount := len(recentViolations)
+	r.mu.RUnlock()
+
 	policy.Status.Ready = true
 	policy.Status.Message = "Policy loaded successfully"
 	if policy.Spec.DryRun {
-		policy.Status.Message = "Policy loaded in dry-run mode (audit only)"
+		policy.Status.Message = fmt.Sprintf("Policy loaded in dry-run mode (audit only). %d violations detected.", violationCount)
 	}
 	policy.Status.LastUpdated = metav1.Now()
+	policy.Status.ViolationCount = int64(violationCount)
+
+	// Include recent violations (last 10)
+	if len(recentViolations) > 0 {
+		startIdx := 0
+		if len(recentViolations) > maxRecentViolations {
+			startIdx = len(recentViolations) - maxRecentViolations
+		}
+		policy.Status.RecentViolations = recentViolations[startIdx:]
+	} else {
+		policy.Status.RecentViolations = nil
+	}
 
 	if err := r.Status().Update(ctx, policy); err != nil {
 		klog.Errorf("Failed to update status for %s: %v", policy.Name, err)
@@ -108,8 +136,37 @@ func (r *AdmissionPolicyReconciler) handleDeletion(ctx context.Context, policy *
 	return reconcile.Result{}, nil
 }
 
+// RecordViolation handles violation reporting from the webhook
+func (r *AdmissionPolicyReconciler) RecordViolation(policyName string, violation v1alpha1.ViolationResource) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.violations == nil {
+		r.violations = make(map[string][]v1alpha1.ViolationResource)
+	}
+
+	// Add the violation
+	r.violations[policyName] = append(r.violations[policyName], violation)
+
+	// Keep only the most recent violations (up to 100 to prevent unbounded growth)
+	if len(r.violations[policyName]) > 100 {
+		r.violations[policyName] = r.violations[policyName][len(r.violations[policyName])-100:]
+	}
+}
+
 // SetupWithManager sets up the controller with the Manager
 func (r *AdmissionPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// Initialize maps
+	if r.violations == nil {
+		r.violations = make(map[string][]v1alpha1.ViolationResource)
+	}
+	if r.lastStatusUpdate == nil {
+		r.lastStatusUpdate = make(map[string]time.Time)
+	}
+
+	// Set up violation callback
+	r.WebhookServer.SetViolationCallback(r.RecordViolation)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.AdmissionPolicy{}).
 		Complete(r)

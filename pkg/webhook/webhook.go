@@ -6,10 +6,12 @@ import (
 	"io"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/policywall/api/v1alpha1"
+	"github.com/casbin/policywall/pkg/metrics"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,6 +28,9 @@ func init() {
 	_ = admissionv1.AddToScheme(scheme)
 }
 
+// ViolationCallback is called when a violation is detected
+type ViolationCallback func(policyName string, violation v1alpha1.ViolationResource)
+
 // PolicyEnforcer represents a Casbin enforcer with dry-run configuration
 type PolicyEnforcer struct {
 	Name     string
@@ -36,8 +41,9 @@ type PolicyEnforcer struct {
 
 // WebhookServer handles admission requests and enforces policies
 type WebhookServer struct {
-	mu        sync.RWMutex
-	enforcers map[string]*PolicyEnforcer
+	mu                sync.RWMutex
+	enforcers         map[string]*PolicyEnforcer
+	violationCallback ViolationCallback
 }
 
 // NewWebhookServer creates a new webhook server
@@ -45,6 +51,13 @@ func NewWebhookServer() *WebhookServer {
 	return &WebhookServer{
 		enforcers: make(map[string]*PolicyEnforcer),
 	}
+}
+
+// SetViolationCallback sets the callback for violation reporting
+func (s *WebhookServer) SetViolationCallback(cb ViolationCallback) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.violationCallback = cb
 }
 
 // UpdatePolicy updates or creates a policy enforcer
@@ -101,6 +114,13 @@ func (s *WebhookServer) UpdatePolicy(policy *v1alpha1.AdmissionPolicy) error {
 		Rules:    policy.Spec.MatchRules,
 	}
 
+	// Update metrics
+	mode := "enforce"
+	if policy.Spec.DryRun {
+		mode = "dryrun"
+	}
+	metrics.ActivePolicies.WithLabelValues(mode).Inc()
+
 	klog.Infof("Updated policy %s (dryRun: %v)", policy.Name, policy.Spec.DryRun)
 	return nil
 }
@@ -109,6 +129,15 @@ func (s *WebhookServer) UpdatePolicy(policy *v1alpha1.AdmissionPolicy) error {
 func (s *WebhookServer) DeletePolicy(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if pe, exists := s.enforcers[name]; exists {
+		mode := "enforce"
+		if pe.DryRun {
+			mode = "dryrun"
+		}
+		metrics.ActivePolicies.WithLabelValues(mode).Dec()
+	}
+
 	delete(s.enforcers, name)
 	klog.Infof("Deleted policy %s", name)
 }
@@ -175,6 +204,13 @@ func (s *WebhookServer) handleAdmission(ar *admissionv1.AdmissionReview) *admiss
 	klog.Infof("AdmissionReview for Kind=%s, Namespace=%s Name=%s UID=%s Operation=%s",
 		req.Kind.Kind, req.Namespace, req.Name, req.UID, req.Operation)
 
+	// Record admission request metrics
+	metrics.AdmissionRequests.WithLabelValues(
+		string(req.Operation),
+		req.Namespace,
+		req.Kind.Kind,
+	).Inc()
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -188,28 +224,82 @@ func (s *WebhookServer) handleAdmission(ar *admissionv1.AdmissionReview) *admiss
 			continue
 		}
 
+		// Track policy evaluation time
+		startTime := time.Now()
+
 		// Build enforcement parameters
 		params := s.buildEnforcementParams(req)
 
 		// Check policy enforcement
 		allowed, err := pe.Enforcer.Enforce(params...)
+
+		// Record evaluation duration
+		metrics.PolicyEvaluationDuration.WithLabelValues(pe.Name).Observe(time.Since(startTime).Seconds())
+
 		if err != nil {
 			klog.Errorf("Error enforcing policy %s: %v", pe.Name, err)
 			continue
 		}
 
 		if !allowed {
-			violationMsg := fmt.Sprintf("Policy '%s' violation: %s %s/%s in namespace %s not allowed",
-				pe.Name, req.Operation, req.Kind.Kind, req.Name, req.Namespace)
+			// Build detailed violation message with rule context
+			user := req.UserInfo.Username
+			if user == "" {
+				user = "unknown"
+			}
+
+			violationMsg := fmt.Sprintf("Policy '%s' denied: user '%s' cannot %s %s '%s/%s' in namespace '%s'. Required: policy rule matching (subject=%s, object=%s/%s, action=%s)",
+				pe.Name,
+				user,
+				req.Operation,
+				req.Kind.Kind,
+				req.Namespace,
+				req.Name,
+				req.Namespace,
+				user,
+				req.Namespace,
+				req.Name,
+				req.Operation,
+			)
+
+			mode := "dryrun"
+			result := "allowed"
 
 			if pe.DryRun {
 				// In dry-run mode: log and add to warnings
 				klog.Warningf("[DRY-RUN] %s", violationMsg)
 				violations = append(violations, violationMsg)
+
+				// Create violation resource for status tracking
+				violation := v1alpha1.ViolationResource{
+					Kind:      req.Kind.Kind,
+					Namespace: req.Namespace,
+					Name:      req.Name,
+					Operation: string(req.Operation),
+					Timestamp: metav1.Now(),
+					User:      user,
+					Message:   violationMsg,
+				}
+
+				// Report violation via callback
+				if s.violationCallback != nil {
+					s.violationCallback(pe.Name, violation)
+				}
 			} else {
 				// Not in dry-run mode: this is a real denial
+				mode = "enforce"
+				result = "denied"
 				denyReasons = append(denyReasons, violationMsg)
 			}
+
+			// Record violation metrics
+			metrics.PolicyViolations.WithLabelValues(
+				pe.Name,
+				mode,
+				result,
+				req.Namespace,
+				req.Kind.Kind,
+			).Inc()
 		}
 	}
 
