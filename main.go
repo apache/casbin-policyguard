@@ -66,8 +66,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Create policy enforcer
-	enforcer, err := webhookpkg.NewPolicyEnforcer(mgr.GetClient())
+	// Create policy enforcer with cached reader for better performance
+	enforcer, err := webhookpkg.NewPolicyEnforcer(mgr.GetClient(), mgr.GetCache())
 	if err != nil {
 		setupLog.Error(err, "unable to create policy enforcer")
 		os.Exit(1)

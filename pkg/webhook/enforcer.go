@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	policyv1alpha1 "github.com/casbin/policywall/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -18,8 +20,9 @@ import (
 
 // PolicyEnforcer handles policy enforcement with Casbin
 type PolicyEnforcer struct {
-	client   client.Client
-	enforcer *casbin.Enforcer
+	client       client.Client
+	cachedReader client.Reader
+	enforcer     *casbin.Enforcer
 }
 
 // EnforcementResult contains the result of policy enforcement
@@ -32,9 +35,10 @@ type EnforcementResult struct {
 
 // PatchOperation represents a JSON Patch operation
 type PatchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
+	Op       string      `json:"op"`
+	Path     string      `json:"path"`
+	Value    interface{} `json:"value,omitempty"`
+	Priority int         // Internal field for sorting
 }
 
 // ValidationResult represents the result of a validation check
@@ -43,8 +47,8 @@ type ValidationResult struct {
 	Message string
 }
 
-// NewPolicyEnforcer creates a new policy enforcer
-func NewPolicyEnforcer(client client.Client) (*PolicyEnforcer, error) {
+// NewPolicyEnforcer creates a new policy enforcer with cached reader
+func NewPolicyEnforcer(client client.Client, cachedReader client.Reader) (*PolicyEnforcer, error) {
 	// Default Casbin model for RBAC with resource-based control
 	defaultModel := `
 [request_definition]
@@ -74,8 +78,9 @@ m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
 	}
 
 	return &PolicyEnforcer{
-		client:   client,
-		enforcer: enforcer,
+		client:       client,
+		cachedReader: cachedReader,
+		enforcer:     enforcer,
 	}, nil
 }
 
@@ -137,9 +142,9 @@ func (pe *PolicyEnforcer) Enforce(ctx context.Context, obj runtime.Object, usern
 	// Normalize resource type to lowercase for comparison
 	resourceTypeLower := strings.ToLower(resourceType)
 
-	// Load all policies
+	// Load all policies using cached reader to reduce API server load
 	var policyList policyv1alpha1.PolicyList
-	if err := pe.client.List(ctx, &policyList); err != nil {
+	if err := pe.cachedReader.List(ctx, &policyList); err != nil {
 		return nil, fmt.Errorf("failed to list policies: %w", err)
 	}
 
@@ -183,13 +188,22 @@ func (pe *PolicyEnforcer) Enforce(ctx context.Context, obj runtime.Object, usern
 		if operation == "CREATE" || operation == "UPDATE" {
 			for _, rule := range policy.Spec.MutationRules {
 				if pe.conditionsMatch(u, rule.Conditions) {
-					patch := pe.generatePatch(&rule)
+					patch, err := pe.generatePatch(&rule)
+					if err != nil {
+						logger.Error(err, "failed to generate patch", "rule", rule.Name)
+						continue
+					}
 					result.Patches = append(result.Patches, patch)
-					logger.Info("mutation applied", "rule", rule.Name, "operation", rule.Operation, "path", rule.Path)
+					logger.Info("mutation applied", "rule", rule.Name, "operation", rule.Operation, "path", rule.Path, "priority", rule.Priority)
 				}
 			}
 		}
 	}
+
+	// Sort patches by priority (lower priority value = applied first)
+	sort.Slice(result.Patches, func(i, j int) bool {
+		return result.Patches[i].Priority < result.Patches[j].Priority
+	})
 
 	return result, nil
 }
@@ -313,10 +327,21 @@ func (pe *PolicyEnforcer) evaluateCondition(obj *unstructured.Unstructured, cond
 }
 
 // generatePatch creates a JSON Patch operation from a mutation rule
-func (pe *PolicyEnforcer) generatePatch(rule *policyv1alpha1.MutationRule) PatchOperation {
+func (pe *PolicyEnforcer) generatePatch(rule *policyv1alpha1.MutationRule) (PatchOperation, error) {
 	patch := PatchOperation{
-		Op:   rule.Operation,
-		Path: rule.Path,
+		Op:       rule.Operation,
+		Path:     rule.Path,
+		Priority: rule.Priority,
+	}
+
+	// Use template if specified
+	if rule.Template != "" {
+		value, err := pe.applyTemplate(rule.Template, rule.TemplateParams)
+		if err != nil {
+			return patch, fmt.Errorf("failed to apply template %s: %w", rule.Template, err)
+		}
+		patch.Value = value
+		return patch, nil
 	}
 
 	// Parse value as JSON if possible, otherwise use as string
@@ -329,7 +354,87 @@ func (pe *PolicyEnforcer) generatePatch(rule *policyv1alpha1.MutationRule) Patch
 		}
 	}
 
-	return patch
+	return patch, nil
+}
+
+// applyTemplate applies a predefined mutation template with parameters
+func (pe *PolicyEnforcer) applyTemplate(templateName string, params map[string]string) (interface{}, error) {
+	switch templateName {
+	case "sidecar":
+		return pe.generateSidecarTemplate(params)
+	case "resource-limits":
+		return pe.generateResourceLimitsTemplate(params)
+	case "labels":
+		return pe.generateLabelsTemplate(params)
+	default:
+		return nil, fmt.Errorf("unknown template: %s", templateName)
+	}
+}
+
+// generateSidecarTemplate generates a sidecar container from template params
+func (pe *PolicyEnforcer) generateSidecarTemplate(params map[string]string) (interface{}, error) {
+	name := params["name"]
+	image := params["image"]
+	if name == "" || image == "" {
+		return nil, fmt.Errorf("sidecar template requires 'name' and 'image' parameters")
+	}
+
+	container := corev1.Container{
+		Name:  name,
+		Image: image,
+	}
+
+	// Optional parameters
+	if cpu := params["cpu"]; cpu != "" {
+		if container.Resources.Limits == nil {
+			container.Resources.Limits = corev1.ResourceList{}
+		}
+		container.Resources.Limits[corev1.ResourceCPU] = parseQuantity(cpu)
+	}
+	if memory := params["memory"]; memory != "" {
+		if container.Resources.Limits == nil {
+			container.Resources.Limits = corev1.ResourceList{}
+		}
+		container.Resources.Limits[corev1.ResourceMemory] = parseQuantity(memory)
+	}
+
+	containerJSON, _ := json.Marshal(container)
+	var containerMap map[string]interface{}
+	_ = json.Unmarshal(containerJSON, &containerMap)
+	return containerMap, nil
+}
+
+// generateResourceLimitsTemplate generates resource limits from template params
+func (pe *PolicyEnforcer) generateResourceLimitsTemplate(params map[string]string) (interface{}, error) {
+	limits := make(map[string]interface{})
+	if cpu := params["cpu"]; cpu != "" {
+		limits["cpu"] = cpu
+	}
+	if memory := params["memory"]; memory != "" {
+		limits["memory"] = memory
+	}
+	if len(limits) == 0 {
+		return nil, fmt.Errorf("resource-limits template requires at least one of 'cpu' or 'memory'")
+	}
+	return limits, nil
+}
+
+// generateLabelsTemplate generates labels from template params
+func (pe *PolicyEnforcer) generateLabelsTemplate(params map[string]string) (interface{}, error) {
+	if len(params) == 0 {
+		return nil, fmt.Errorf("labels template requires at least one label parameter")
+	}
+	return params, nil
+}
+
+// parseQuantity parses a resource quantity string
+func parseQuantity(s string) resource.Quantity {
+	qty, err := resource.ParseQuantity(s)
+	if err != nil {
+		// Return zero quantity on error
+		return resource.Quantity{}
+	}
+	return qty
 }
 
 // Common mutation helpers

@@ -58,6 +58,20 @@ type MutationRule struct {
 	// +optional
 	Value string `json:"value,omitempty"`
 
+	// Priority determines the order of patch application (lower values = higher priority)
+	// Default is 0. Patches are sorted by priority in ascending order.
+	// +optional
+	Priority int `json:"priority,omitempty"`
+
+	// Template references a predefined mutation template (e.g., "sidecar", "resource-limits")
+	// When set, the helper function generates the patch value
+	// +optional
+	Template string `json:"template,omitempty"`
+
+	// TemplateParams provides parameters for the template
+	// +optional
+	TemplateParams map[string]string `json:"templateParams,omitempty"`
+
 	// Conditions defines when this mutation should apply
 	// +optional
 	Conditions []RuleCondition `json:"conditions,omitempty"`
@@ -107,6 +121,22 @@ type PolicyStatus struct {
 	// LastUpdateTime is the last time the policy was updated
 	// +optional
 	LastUpdateTime metav1.Time `json:"lastUpdateTime,omitempty"`
+
+	// AppliedCount is the number of times this policy has been successfully applied
+	// +optional
+	AppliedCount int64 `json:"appliedCount,omitempty"`
+
+	// RejectedCount is the number of times this policy has rejected a request
+	// +optional
+	RejectedCount int64 `json:"rejectedCount,omitempty"`
+
+	// LastAppliedTime is the timestamp of the last successful application
+	// +optional
+	LastAppliedTime metav1.Time `json:"lastAppliedTime,omitempty"`
+
+	// ErrorMessage contains the last error message if policy application failed
+	// +optional
+	ErrorMessage string `json:"errorMessage,omitempty"`
 }
 
 // +kubebuilder:object:root=true

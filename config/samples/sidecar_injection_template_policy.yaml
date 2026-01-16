@@ -1,0 +1,38 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: Policy
+metadata:
+  name: sidecar-injection-template-policy
+spec:
+  subjects:
+  - "*"
+  resources:
+  - resources:
+    - pods
+    namespaces:
+    - default
+  mutationRules:
+  # Use template for easy sidecar injection - no complex JSON required!
+  - name: inject-sidecar-container
+    operation: add
+    path: /spec/containers/-
+    template: sidecar
+    templateParams:
+      name: "sidecar-proxy"
+      image: "envoyproxy/envoy:v1.27-latest"
+      cpu: "200m"
+      memory: "256Mi"
+    priority: 10
+    conditions:
+    - field: metadata.labels.inject-sidecar
+      operator: equals
+      value: "true"
+  # Add label after sidecar injection
+  - name: add-sidecar-label
+    operation: add
+    path: /metadata/labels/sidecar-injected
+    value: "true"
+    priority: 20
+    conditions:
+    - field: metadata.labels.inject-sidecar
+      operator: equals
+      value: "true"

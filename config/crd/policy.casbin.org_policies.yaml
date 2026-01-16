@@ -86,6 +86,19 @@ spec:
                       type: string
                     value:
                       type: string
+                    priority:
+                      type: integer
+                      default: 0
+                    template:
+                      type: string
+                      enum:
+                      - sidecar
+                      - resource-limits
+                      - labels
+                    templateParams:
+                      type: object
+                      additionalProperties:
+                        type: string
                     conditions:
                       type: array
                       items:
@@ -165,5 +178,16 @@ spec:
               lastUpdateTime:
                 type: string
                 format: date-time
+              appliedCount:
+                type: integer
+                format: int64
+              rejectedCount:
+                type: integer
+                format: int64
+              lastAppliedTime:
+                type: string
+                format: date-time
+              errorMessage:
+                type: string
     subresources:
       status: {}
