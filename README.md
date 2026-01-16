@@ -4,6 +4,7 @@ PolicyWall is a Kubernetes admission webhook controller that enforces access con
 
 ## Features
 
+### Core Features
 - **Casbin-based Policy Enforcement**: Leverage Casbin's powerful RBAC, ABAC, and other access control models
 - **Audit Mode (Dry-Run)**: Test policies in production without disrupting operations
   - Violations are logged and returned as warnings
@@ -13,6 +14,15 @@ PolicyWall is a Kubernetes admission webhook controller that enforces access con
 - **Flexible Matching Rules**: Apply policies selectively based on API groups, resources, and operations
 - **Real-time Policy Updates**: Policies are dynamically loaded without restart
 - **Multiple Policy Support**: Run multiple policies with different configurations simultaneously
+
+### Observability & Validation
+- **Prometheus Metrics**: Real-time monitoring of violations, requests, and evaluation performance
+- **Detailed Error Messages**: See exactly which user, resource, and rule caused a denial
+- **Status Tracking**: Recent violations visible directly in CRD status (last 10)
+- **Model Validation**: Validating webhook rejects invalid Casbin models immediately
+- **Audit Trail**: Track who attempted what operations with timestamps
+
+See [Observability Documentation](docs/OBSERVABILITY.md) for details.
 
 ## Architecture
 
@@ -149,9 +159,16 @@ strict-policy  false    true    0            2m
    kubectl apply -f config/samples/dryrun-policy.yaml
    ```
 
-2. **Monitor violations** in logs and warnings:
+2. **Monitor violations** in logs, status, and metrics:
    ```bash
+   # View logs
    kubectl logs -n policywall-system deployment/policywall-controller
+   
+   # Check status with recent violations
+   kubectl get admissionpolicy test-policy -o yaml | grep -A 20 recentViolations
+   
+   # Query Prometheus metrics
+   curl http://localhost:8080/metrics | grep policywall_policy_violations_total
    ```
 
 3. **Adjust policy** based on observed violations
@@ -160,6 +177,39 @@ strict-policy  false    true    0            2m
    ```bash
    kubectl patch admissionpolicy test-policy --type=merge -p '{"spec":{"dryRun":false}}'
    ```
+
+## Monitoring & Observability
+
+### Prometheus Metrics
+
+PolicyWall exposes several metrics for monitoring:
+
+- `policywall_policy_violations_total`: Total violations detected (by policy, mode, result, namespace, resource)
+- `policywall_admission_requests_total`: Total requests processed (by operation, namespace, resource)
+- `policywall_policy_evaluation_duration_seconds`: Policy evaluation time histogram
+- `policywall_active_policies`: Number of active policies (by mode)
+
+Access metrics at `:8080/metrics`:
+```bash
+curl http://policywall-controller:8080/metrics | grep policywall
+```
+
+### Violation Tracking
+
+Recent violations are tracked in the CRD status:
+```bash
+# View recent violations
+kubectl get admissionpolicy production-policy -o jsonpath='{.status.recentViolations}' | jq .
+
+# Output shows last 10 violations with:
+# - Resource details (kind, namespace, name)
+# - Operation attempted
+# - User who attempted it
+# - Timestamp
+# - Detailed error message
+```
+
+See [Observability Documentation](docs/OBSERVABILITY.md) for complete details.
 
 ## Configuration
 
