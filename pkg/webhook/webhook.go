@@ -295,7 +295,7 @@ func parsePolicy(policyStr string) [][]string {
 
 	for _, line := range lines {
 		line = trimSpace(line)
-		if line == "" || line[0] == '#' {
+		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 
@@ -319,7 +319,7 @@ func parseRoles(policyStr string) [][]string {
 
 	for _, line := range lines {
 		line = trimSpace(line)
-		if line == "" || line[0] == '#' {
+		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
 

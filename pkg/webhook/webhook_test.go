@@ -359,7 +359,7 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act`,
 	}
 }
 
-func TestWebhookServer_MultiplePolices(t *testing.T) {
+func TestWebhookServer_MultiplePolicies(t *testing.T) {
 	server := NewWebhookServer()
 
 	// Add a dry-run policy

@@ -44,7 +44,7 @@ EOF
 
 ## Step 2: Monitor Violations
 
-Watch the logs to see what would be blocked:
+Watch the logs to see what would be blocked. Since the webhook runs as part of the controller:
 
 ```bash
 kubectl logs -n policywall-system deployment/policywall-controller -f | grep "DRY-RUN"
@@ -54,6 +54,8 @@ You'll see output like:
 ```
 W0116 01:19:54.677559 [DRY-RUN] Policy 'production-protection' violation: DELETE Pod/myapp in namespace production not allowed
 ```
+
+Note: The DRY-RUN violations are logged by the webhook handler within the controller pod.
 
 ## Step 3: Identify False Positives
 
