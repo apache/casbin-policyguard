@@ -1,0 +1,50 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: rbac-example
+spec:
+  # Start in dry-run mode
+  dryRun: true
+  
+  # RBAC model with hierarchical roles
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    
+    [policy_definition]
+    p = sub, obj, act
+    
+    [role_definition]
+    g = _, _
+    
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  
+  # Define roles and permissions
+  policy: |
+    # Admin role permissions
+    p, role:cluster-admin, */*, CREATE
+    p, role:cluster-admin, */*, UPDATE
+    p, role:cluster-admin, */*, DELETE
+    
+    # Developer role permissions
+    p, role:developer, development/*, CREATE
+    p, role:developer, development/*, UPDATE
+    
+    # Operator role permissions
+    p, role:operator, production/*, UPDATE
+    
+    # Role assignments
+    g, alice@example.com, role:cluster-admin
+    g, bob@example.com, role:developer
+    g, charlie@example.com, role:operator
+  
+  # Apply to core resources
+  matchRules:
+  - apiGroups: ["", "apps"]
+    apiVersions: ["v1"]
+    resources: ["pods", "deployments", "services", "configmaps"]
+    operations: ["CREATE", "UPDATE", "DELETE"]

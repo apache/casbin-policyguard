@@ -1,0 +1,41 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: strict-namespace-policy
+spec:
+  # Enforce mode - violations will deny requests
+  dryRun: false
+  
+  # Casbin RBAC model
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    
+    [policy_definition]
+    p = sub, obj, act
+    
+    [role_definition]
+    g = _, _
+    
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  
+  # Strict enforcement policy
+  policy: |
+    p, role:admin, production/*, DELETE
+    p, role:admin, production/*, CREATE
+    p, role:admin, production/*, UPDATE
+    g, admin@example.com, role:admin
+  
+  matchRules:
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods", "services"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+  - apiGroups: ["apps"]
+    apiVersions: ["v1"]
+    resources: ["deployments", "statefulsets"]
+    operations: ["CREATE", "UPDATE", "DELETE"]

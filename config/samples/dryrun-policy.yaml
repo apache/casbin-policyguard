@@ -1,0 +1,38 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: namespace-policy
+spec:
+  # Enable dry-run mode for safe testing
+  dryRun: true
+  
+  # Casbin RBAC model
+  model: |
+    [request_definition]
+    r = sub, obj, act
+    
+    [policy_definition]
+    p = sub, obj, act
+    
+    [role_definition]
+    g = _, _
+    
+    [policy_effect]
+    e = some(where (p.eft == allow))
+    
+    [matchers]
+    m = g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act
+  
+  # Example policy: only admins can delete resources in production namespace
+  policy: |
+    p, role:admin, production/*, DELETE
+    p, role:developer, development/*, CREATE
+    p, role:developer, development/*, UPDATE
+    g, admin@example.com, role:admin
+    g, dev@example.com, role:developer
+  
+  matchRules:
+  - apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods", "services", "configmaps"]
+    operations: ["CREATE", "UPDATE", "DELETE"]

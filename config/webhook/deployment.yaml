@@ -1,0 +1,131 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: policywall-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: policywall-controller
+  namespace: policywall-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: policywall-controller-role
+rules:
+- apiGroups:
+  - policy.casbin.org
+  resources:
+  - admissionpolicies
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - policy.casbin.org
+  resources:
+  - admissionpolicies/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: policywall-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: policywall-controller-role
+subjects:
+- kind: ServiceAccount
+  name: policywall-controller
+  namespace: policywall-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: policywall-webhook
+  namespace: policywall-system
+spec:
+  selector:
+    app: policywall-controller
+  ports:
+  - name: webhook
+    port: 443
+    targetPort: 9443
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: policywall-controller
+  namespace: policywall-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: policywall-controller
+  template:
+    metadata:
+      labels:
+        app: policywall-controller
+    spec:
+      serviceAccountName: policywall-controller
+      containers:
+      - name: manager
+        image: policywall:latest
+        imagePullPolicy: IfNotPresent
+        command:
+        - /manager
+        args:
+        - --metrics-bind-address=:8080
+        - --health-probe-bind-address=:8081
+        - --webhook-port=9443
+        ports:
+        - containerPort: 9443
+          name: webhook
+          protocol: TCP
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 64Mi
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      volumes:
+      - name: cert
+        secret:
+          secretName: policywall-webhook-certs
