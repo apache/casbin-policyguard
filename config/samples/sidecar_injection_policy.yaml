@@ -1,0 +1,34 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: Policy
+metadata:
+  name: sidecar-injection-policy
+spec:
+  subjects:
+  - "*"
+  resources:
+  - resources:
+    - pods
+    namespaces:
+    - default
+  mutationRules:
+  - name: inject-sidecar-container
+    operation: add
+    path: /spec/containers/-
+    value: |
+      {
+        "name": "sidecar-proxy",
+        "image": "envoyproxy/envoy:v1.27-latest",
+        "ports": [{"containerPort": 8080}]
+      }
+    conditions:
+    - field: metadata.labels.inject-sidecar
+      operator: equals
+      value: "true"
+  - name: add-sidecar-label
+    operation: add
+    path: /metadata/labels/sidecar-injected
+    value: "true"
+    conditions:
+    - field: metadata.labels.inject-sidecar
+      operator: equals
+      value: "true"

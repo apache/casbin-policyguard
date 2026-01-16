@@ -1,0 +1,37 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: Policy
+metadata:
+  name: security-validation-policy
+spec:
+  subjects:
+  - "*"
+  resources:
+  - resources:
+    - pods
+    namespaces:
+    - "*"
+  validationRules:
+  - name: deny-privileged-containers
+    action: deny
+    message: "Privileged containers are not allowed"
+    conditions:
+    - field: spec.containers.0.securityContext.privileged
+      operator: equals
+      value: "true"
+  - name: require-non-root-user
+    action: deny
+    message: "Containers must run as non-root user"
+    conditions:
+    - field: spec.securityContext.runAsNonRoot
+      operator: equals
+      value: "false"
+  - name: allow-approved-images
+    action: deny
+    message: "Only images from approved registries are allowed"
+    conditions:
+    - field: spec.containers.0.image
+      operator: notIn
+      values:
+      - "docker.io/library/*"
+      - "gcr.io/*"
+      - "quay.io/*"

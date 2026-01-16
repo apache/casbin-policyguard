@@ -1,0 +1,36 @@
+apiVersion: policy.casbin.org/v1alpha1
+kind: Policy
+metadata:
+  name: resource-limits-policy
+spec:
+  subjects:
+  - "*"
+  resources:
+  - resources:
+    - pods
+    namespaces:
+    - default
+    - production
+  mutationRules:
+  - name: set-resource-limits
+    operation: add
+    path: /spec/containers/0/resources/limits
+    value: |
+      {
+        "cpu": "500m",
+        "memory": "512Mi"
+      }
+    conditions:
+    - field: spec.containers.0.resources.limits
+      operator: notExists
+  - name: set-resource-requests
+    operation: add
+    path: /spec/containers/0/resources/requests
+    value: |
+      {
+        "cpu": "250m",
+        "memory": "256Mi"
+      }
+    conditions:
+    - field: spec.containers.0.resources.requests
+      operator: notExists

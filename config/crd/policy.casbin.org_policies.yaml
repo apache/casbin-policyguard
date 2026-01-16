@@ -1,0 +1,169 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: policies.policy.casbin.org
+spec:
+  group: policy.casbin.org
+  names:
+    kind: Policy
+    listKind: PolicyList
+    plural: policies
+    singular: policy
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required:
+            - resources
+            properties:
+              validationRules:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - action
+                  properties:
+                    name:
+                      type: string
+                    action:
+                      type: string
+                      enum:
+                      - allow
+                      - deny
+                    conditions:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - field
+                        - operator
+                        properties:
+                          field:
+                            type: string
+                          operator:
+                            type: string
+                            enum:
+                            - equals
+                            - notEquals
+                            - in
+                            - notIn
+                            - exists
+                            - notExists
+                          value:
+                            type: string
+                          values:
+                            type: array
+                            items:
+                              type: string
+                    message:
+                      type: string
+              mutationRules:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - name
+                  - operation
+                  - path
+                  properties:
+                    name:
+                      type: string
+                    operation:
+                      type: string
+                      enum:
+                      - add
+                      - remove
+                      - replace
+                    path:
+                      type: string
+                    value:
+                      type: string
+                    conditions:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                        - field
+                        - operator
+                        properties:
+                          field:
+                            type: string
+                          operator:
+                            type: string
+                            enum:
+                            - equals
+                            - notEquals
+                            - in
+                            - notIn
+                            - exists
+                            - notExists
+                          value:
+                            type: string
+                          values:
+                            type: array
+                            items:
+                              type: string
+              subjects:
+                type: array
+                items:
+                  type: string
+              resources:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - resources
+                  properties:
+                    apiGroups:
+                      type: array
+                      items:
+                        type: string
+                    apiVersions:
+                      type: array
+                      items:
+                        type: string
+                    resources:
+                      type: array
+                      items:
+                        type: string
+                    namespaces:
+                      type: array
+                      items:
+                        type: string
+              casbinModel:
+                type: string
+          status:
+            type: object
+            properties:
+              conditions:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - type
+                  - status
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    reason:
+                      type: string
+                    message:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+              lastUpdateTime:
+                type: string
+                format: date-time
+    subresources:
+      status: {}
