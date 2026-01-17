@@ -1,0 +1,59 @@
+{{define "content"}}
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-value">{{.Metrics.totalRequests}}</div>
+        <div class="metric-label">Total Requests</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{.Metrics.allowedRequests}}</div>
+        <div class="metric-label">Allowed</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{.Metrics.deniedRequests}}</div>
+        <div class="metric-label">Denied</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{printf "%.1f" .Metrics.violationRate}}%</div>
+        <div class="metric-label">Violation Rate</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-value">{{.Metrics.activePolicies}}</div>
+        <div class="metric-label">Active Policies</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📊 Cluster Status Overview</h2>
+    <p>This dashboard provides a real-time view of your PolicyWall admission controller metrics.</p>
+    
+    <div class="alert alert-info" style="margin-top: 1rem;">
+        <strong>ℹ️ Note:</strong> Metrics are currently showing mock data. In production, these would be pulled from Prometheus metrics endpoint.
+    </div>
+
+    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Key Metrics</h3>
+    <ul style="line-height: 1.8;">
+        <li><strong>Total Requests:</strong> Total number of admission requests processed by PolicyWall</li>
+        <li><strong>Allowed:</strong> Requests that passed policy validation</li>
+        <li><strong>Denied:</strong> Requests that were rejected by policies</li>
+        <li><strong>Violation Rate:</strong> Percentage of requests that violated policies</li>
+        <li><strong>Active Policies:</strong> Number of currently enforced admission policies</li>
+    </ul>
+</div>
+
+<div class="card">
+    <h2>🔧 Quick Actions</h2>
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <a href="/editor" class="btn">Create New Policy</a>
+        <a href="/playground" class="btn btn-success">Test Policy</a>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📝 Getting Started</h2>
+    <ol style="line-height: 1.8;">
+        <li>Use the <strong>Policy Editor</strong> to create and validate admission policies using a graphical form</li>
+        <li>Test your policies in the <strong>Playground</strong> before deploying to production</li>
+        <li>Monitor policy violations and request metrics on this <strong>Overview</strong> page</li>
+    </ol>
+</div>
+{{end}}

@@ -1,0 +1,139 @@
+{{define "content"}}
+<div class="card">
+    <h2>✏️ Policy Editor</h2>
+    <p>Create and edit Kubernetes AdmissionPolicy resources using a graphical form. The YAML will be generated automatically.</p>
+</div>
+
+<div class="card">
+    <h3>Policy Configuration</h3>
+    
+    <div class="form-group">
+        <label for="policyName">Policy Name</label>
+        <input type="text" id="policyName" placeholder="e.g., deny-privileged-containers" value="example-policy">
+    </div>
+
+    <div class="form-group">
+        <label for="policyNamespace">Namespace</label>
+        <input type="text" id="policyNamespace" placeholder="default" value="default">
+    </div>
+
+    <div class="form-group">
+        <label for="policyAction">Action</label>
+        <select id="policyAction">
+            <option value="deny">Deny</option>
+            <option value="allow">Allow</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="resourceKind">Resource Kind</label>
+        <select id="resourceKind">
+            <option value="Pod">Pod</option>
+            <option value="Deployment">Deployment</option>
+            <option value="Service">Service</option>
+            <option value="ConfigMap">ConfigMap</option>
+            <option value="Secret">Secret</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="policyRule">Policy Rule (Casbin format)</label>
+        <textarea id="policyRule" placeholder="e.g., p, admin, /api/*, GET">p, admin, /api/*, *</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" placeholder="Describe what this policy does..." style="min-height: 100px;">This policy controls access to API resources</textarea>
+    </div>
+
+    <button class="btn" onclick="generateYAML()">Generate YAML</button>
+    <button class="btn btn-success" onclick="validatePolicy()">Validate Policy</button>
+</div>
+
+<div class="card" id="yamlOutput" style="display: none;">
+    <h3>Generated YAML</h3>
+    <pre id="generatedYAML"></pre>
+    <button class="btn" onclick="copyToClipboard()">Copy to Clipboard</button>
+</div>
+
+<div id="validationResult"></div>
+
+<script>
+function generateYAML() {
+    const name = document.getElementById('policyName').value;
+    const namespace = document.getElementById('policyNamespace').value;
+    const action = document.getElementById('policyAction').value;
+    const kind = document.getElementById('resourceKind').value;
+    const rule = document.getElementById('policyRule').value;
+    const description = document.getElementById('description').value;
+
+    const yaml = `apiVersion: policy.casbin.org/v1alpha1
+kind: AdmissionPolicy
+metadata:
+  name: ${name}
+  namespace: ${namespace}
+spec:
+  action: ${action}
+  targetResources:
+    - ${kind}
+  rules:
+    - ${rule}
+  description: ${description}
+`;
+
+    document.getElementById('generatedYAML').textContent = yaml;
+    document.getElementById('yamlOutput').style.display = 'block';
+}
+
+async function validatePolicy() {
+    const name = document.getElementById('policyName').value;
+    const namespace = document.getElementById('policyNamespace').value;
+    const rule = document.getElementById('policyRule').value;
+
+    if (!name || !namespace || !rule) {
+        showValidationResult('Please fill in all required fields', 'error');
+        return;
+    }
+
+    try {
+        const yaml = document.getElementById('generatedYAML').textContent || 'Not generated yet';
+        const response = await fetch('/api/policy/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+            body: yaml
+        });
+
+        const result = await response.json();
+        if (result.valid) {
+            showValidationResult('✅ Policy is valid!', 'success');
+        } else {
+            showValidationResult('❌ Policy validation failed', 'error');
+        }
+    } catch (error) {
+        showValidationResult('❌ Validation error: ' + error.message, 'error');
+    }
+}
+
+function showValidationResult(message, type) {
+    const resultDiv = document.getElementById('validationResult');
+    resultDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    setTimeout(() => {
+        resultDiv.innerHTML = '';
+    }, 5000);
+}
+
+function copyToClipboard() {
+    const yaml = document.getElementById('generatedYAML').textContent;
+    navigator.clipboard.writeText(yaml).then(() => {
+        showValidationResult('✅ YAML copied to clipboard!', 'success');
+    });
+}
+
+// Generate YAML on page load
+window.onload = function() {
+    generateYAML();
+};
+</script>
+{{end}}

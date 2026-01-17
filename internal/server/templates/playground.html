@@ -1,0 +1,133 @@
+{{define "content"}}
+<div class="card">
+    <h2>🎮 Policy Playground</h2>
+    <p>Test your policies against sample admission requests without affecting your live cluster. This uses the Casbin enforcer to evaluate policies in a safe sandbox environment.</p>
+</div>
+
+<div class="card">
+    <h3>Test Request</h3>
+    <p>Paste a JSON admission request to test against the policy:</p>
+    
+    <div class="form-group">
+        <label for="testRequest">Admission Request (JSON)</label>
+        <textarea id="testRequest" placeholder='{"subject": "alice", "object": "/api/pods", "action": "GET"}'>{
+  "subject": "alice",
+  "object": "/*",
+  "action": "GET"
+}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="testPolicy">Policy Configuration (optional)</label>
+        <textarea id="testPolicy" placeholder="Enter policy rules or leave empty to use default" style="min-height: 100px;">Using default RBAC model with admin and user roles</textarea>
+    </div>
+
+    <button class="btn btn-success" onclick="runTest()">Run Test</button>
+    <button class="btn" onclick="loadExample()">Load Example</button>
+</div>
+
+<div id="testResult"></div>
+
+<div class="card">
+    <h3>Example Requests</h3>
+    <p>Try these example requests to see how the policy enforcer works:</p>
+    
+    <div style="margin-top: 1rem;">
+        <h4>Allowed Request (admin user):</h4>
+        <pre>{
+  "subject": "alice",
+  "object": "/*",
+  "action": "GET"
+}</pre>
+    </div>
+
+    <div style="margin-top: 1rem;">
+        <h4>Allowed Request (regular user):</h4>
+        <pre>{
+  "subject": "bob",
+  "object": "/api/pods",
+  "action": "GET"
+}</pre>
+    </div>
+
+    <div style="margin-top: 1rem;">
+        <h4>Denied Request (regular user):</h4>
+        <pre>{
+  "subject": "bob",
+  "object": "/api/secrets",
+  "action": "DELETE"
+}</pre>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Current Policy Rules</h3>
+    <p>The playground uses these default policies:</p>
+    <ul style="line-height: 1.8; margin-top: 0.5rem;">
+        <li><code>p, admin, /*, *</code> - Admins can access all resources with any action</li>
+        <li><code>p, user, /api/*, GET</code> - Users can GET resources under /api/</li>
+        <li><code>g, alice, admin</code> - Alice has admin role</li>
+        <li><code>g, bob, user</code> - Bob has user role</li>
+    </ul>
+</div>
+
+<script>
+async function runTest() {
+    const requestText = document.getElementById('testRequest').value;
+    const policyText = document.getElementById('testPolicy').value;
+
+    try {
+        // Validate JSON
+        JSON.parse(requestText);
+
+        const response = await fetch('/api/playground/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                request: requestText,
+                policy: policyText
+            })
+        });
+
+        const result = await response.json();
+        
+        let resultHTML = '<div class="card">';
+        resultHTML += '<h3>Test Result</h3>';
+        
+        if (result.allowed) {
+            resultHTML += `<div class="alert alert-success">
+                <strong>✅ Request ALLOWED</strong><br>
+                ${result.message || 'The request passed policy validation.'}
+            </div>`;
+        } else {
+            resultHTML += `<div class="alert alert-error">
+                <strong>❌ Request DENIED</strong><br>
+                ${result.message || result.error || 'The request failed policy validation.'}
+            </div>`;
+        }
+        
+        resultHTML += '</div>';
+        document.getElementById('testResult').innerHTML = resultHTML;
+    } catch (error) {
+        document.getElementById('testResult').innerHTML = `
+            <div class="card">
+                <div class="alert alert-error">
+                    <strong>❌ Error:</strong> ${error.message || 'Invalid JSON format'}
+                </div>
+            </div>
+        `;
+    }
+}
+
+function loadExample() {
+    document.getElementById('testRequest').value = `{
+  "subject": "alice",
+  "object": "/*",
+  "action": "GET"
+}`;
+    document.getElementById('testPolicy').value = 'Using default RBAC model with admin and user roles';
+}
+</script>
+{{end}}
