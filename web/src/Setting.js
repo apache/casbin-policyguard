@@ -1,8 +1,8 @@
-import {message} from "antd";
 import {isMobile as isMobileDevice} from "react-device-detect";
 import i18next from "i18next";
 import moment from "moment";
 import Sdk from "casdoor-js-sdk";
+import { toast } from "sonner";
 
 export let ServerUrl = "";
 export let CasdoorSdk;
@@ -77,9 +77,9 @@ export function showMessage(type, text) {
   if (type === "") {
     return;
   } else if (type === "success") {
-    message.success(text);
+    toast.success(text);
   } else if (type === "error") {
-    message.error(text);
+    toast.error(text);
   }
 }
 
