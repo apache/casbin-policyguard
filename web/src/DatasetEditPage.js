@@ -28,6 +28,8 @@ class DatasetEditPage extends React.Component {
       .then((dataset) => {
         this.setState({
           dataset: dataset,
+          parsedStartDate: dataset.startDate ? parse(dataset.startDate, "yyyy-MM-dd", new Date()) : null,
+          parsedEndDate: dataset.endDate ? parse(dataset.endDate, "yyyy-MM-dd", new Date()) : null,
         });
       });
   }
@@ -44,15 +46,20 @@ class DatasetEditPage extends React.Component {
 
     const dataset = this.state.dataset;
     dataset[key] = value;
-    this.setState({
-      dataset: dataset,
-    });
+    
+    // Update parsed dates when date fields change
+    const updates = { dataset: dataset };
+    if (key === "startDate") {
+      updates.parsedStartDate = value ? parse(value, "yyyy-MM-dd", new Date()) : null;
+    }
+    if (key === "endDate") {
+      updates.parsedEndDate = value ? parse(value, "yyyy-MM-dd", new Date()) : null;
+    }
+    
+    this.setState(updates);
   }
 
   renderDataset() {
-    const startDate = this.state.dataset.startDate ? parse(this.state.dataset.startDate, "yyyy-MM-dd", new Date()) : null;
-    const endDate = this.state.dataset.endDate ? parse(this.state.dataset.endDate, "yyyy-MM-dd", new Date()) : null;
-
     return (
       <Card className="ml-1">
         <CardHeader>
@@ -76,14 +83,14 @@ class DatasetEditPage extends React.Component {
             <label className="col-span-2">{i18next.t("dataset:Start date")}:</label>
             <div className="col-span-4">
               <DatePicker
-                date={startDate}
+                date={this.state.parsedStartDate}
                 onDateChange={(date) => this.updateDatasetField("startDate", date ? format(date, "yyyy-MM-dd") : "")}
               />
             </div>
             <label className="col-span-2">{i18next.t("dataset:End date")}:</label>
             <div className="col-span-4">
               <DatePicker
-                date={endDate}
+                date={this.state.parsedEndDate}
                 onDateChange={(date) => this.updateDatasetField("endDate", date ? format(date, "yyyy-MM-dd") : "")}
               />
             </div>
@@ -150,7 +157,10 @@ class DatasetEditPage extends React.Component {
               <Input
                 value={this.state.dataset.carousels.join(", ")}
                 placeholder="Please input (comma separated)"
-                onChange={e => this.updateDatasetField("carousels", e.target.value.split(",").map(s => s.trim()).filter(s => s))}
+                onChange={e => {
+                  const values = e.target.value ? e.target.value.split(",").map(s => s.trim()) : [];
+                  this.updateDatasetField("carousels", values);
+                }}
               />
             </div>
           </div>
