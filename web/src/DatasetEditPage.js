@@ -1,9 +1,9 @@
 import React from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
+import { Input } from "./components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
+import { DatePicker } from "./components/ui/date-picker";
 import * as DatasetBackend from "./backend/DatasetBackend";
 import * as Setting from "./Setting";
 import { parse, format } from "date-fns";
@@ -233,11 +233,6 @@ class DatasetEditPage extends React.Component {
         <div className="max-w-[95%] mx-auto mt-4 ml-3">
           <Button size="lg" onClick={this.submitDatasetEdit.bind(this)}>{i18next.t("general:Save")}</Button>
         </div>
-      </div>
-    );
-  }
-          </Col>
-        </Row>
       </div>
     );
   }

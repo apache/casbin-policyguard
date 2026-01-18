@@ -1,5 +1,6 @@
 import React from "react";
-import {Button, Result, Spin} from "antd";
+import { Button } from "./components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "./components/ui/card";
 import {withRouter} from "react-router-dom";
 import * as Setting from "./Setting";
 
@@ -41,27 +42,25 @@ class AuthCallback extends React.Component {
 
   render() {
     return (
-      <div style={{textAlign: "center"}}>
+      <div className="flex justify-center items-center min-h-screen">
         {this.state.msg === null ? (
-          <Spin
-            size="large"
-            tip="Signing in..."
-            style={{paddingTop: "10%"}}
-          />
-        ) : (
-          <div style={{display: "inline"}}>
-            <Result
-              status="error"
-              title="Login Error"
-              subTitle={this.state.msg}
-              extra={[
-                <Button type="primary" key="details">
-                  Details
-                </Button>,
-                <Button key="help">Help</Button>,
-              ]}
-            />
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-lg">Signing in...</p>
           </div>
+        ) : (
+          <Card className="w-96">
+            <CardHeader>
+              <CardTitle className="text-red-600">Login Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">{this.state.msg}</p>
+              <div className="flex gap-2">
+                <Button>Details</Button>
+                <Button variant="outline">Help</Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     );

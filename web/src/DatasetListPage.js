@@ -1,8 +1,8 @@
 import React from "react";
 import {Link} from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "./components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./components/ui/table";
+import { ConfirmDialog } from "./components/ui/confirm-dialog";
 import * as Setting from "./Setting";
 import * as DatasetBackend from "./backend/DatasetBackend";
 import i18next from "i18next";
@@ -157,9 +157,6 @@ class DatasetListPage extends React.Component {
         <div className="max-w-[95%] mx-auto">
           {this.renderTable(this.state.datasets)}
         </div>
-      </div>
-    );
-  }
       </div>
     );
   }

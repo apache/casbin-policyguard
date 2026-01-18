@@ -35,7 +35,6 @@ function initLanguage() {
       }
     }
   }
-  Setting.changeMomentLanguage(language);
 
   return language;
 }
