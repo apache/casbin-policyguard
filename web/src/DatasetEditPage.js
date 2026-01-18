@@ -158,7 +158,9 @@ class DatasetEditPage extends React.Component {
                 value={this.state.dataset.carousels.join(", ")}
                 placeholder="Please input (comma separated)"
                 onChange={e => {
-                  const values = e.target.value ? e.target.value.split(",").map(s => s.trim()) : [];
+                  const values = e.target.value 
+                    ? e.target.value.split(",").map(s => s.trim()).filter(s => s !== "")
+                    : [];
                   this.updateDatasetField("carousels", values);
                 }}
               />
