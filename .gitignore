@@ -23,3 +23,8 @@ tmpFiles/
 logs/
 lastupdate.tmp
 commentsRouter*.go
+
+# Build artifacts
+caswaf
+web/build
+web/nul
