@@ -1,10 +1,12 @@
 import React from "react";
 import {Link} from "react-router-dom";
-import {Button, Col, Popconfirm, Row, Table} from "antd";
-import moment from "moment";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import * as Setting from "./Setting";
 import * as DatasetBackend from "./backend/DatasetBackend";
 import i18next from "i18next";
+import { format } from "date-fns";
 
 class DatasetListPage extends React.Component {
   constructor(props) {
@@ -12,6 +14,8 @@ class DatasetListPage extends React.Component {
     this.state = {
       classes: props,
       datasets: null,
+      deleteDialogOpen: false,
+      datasetToDelete: null,
     };
   }
 
@@ -29,12 +33,14 @@ class DatasetListPage extends React.Component {
   }
 
   newDataset() {
+    const now = new Date();
+    const dateStr = format(now, "yyyy-MM-dd");
     return {
       owner: this.props.account.name,
       name: `dataset_${this.state.datasets.length}`,
-      createdTime: moment().format(),
-      startDate: moment().format("YYYY-MM-DD"),
-      endDate: moment().format("YYYY-MM-DD"),
+      createdTime: now.toISOString(),
+      startDate: dateStr,
+      endDate: dateStr,
       fullName: `Dataset ${this.state.datasets.length}`,
       organizer: "Casbin",
       location: "Shanghai, China",
@@ -69,6 +75,8 @@ class DatasetListPage extends React.Component {
         Setting.showMessage("success", "Dataset deleted successfully");
         this.setState({
           datasets: Setting.deleteRow(this.state.datasets, i),
+          deleteDialogOpen: false,
+          datasetToDelete: null,
         });
       }
       )
@@ -78,128 +86,80 @@ class DatasetListPage extends React.Component {
   }
 
   renderTable(datasets) {
-    const columns = [
-      {
-        title: i18next.t("general:Name"),
-        dataIndex: "name",
-        key: "name",
-        width: "120px",
-        sorter: (a, b) => a.name.localeCompare(b.name),
-        render: (text, record, index) => {
-          return (
-            <Link to={`/datasets/${text}`}>
-              {text}
-            </Link>
-          );
-        },
-      },
-      {
-        title: i18next.t("dataset:Start date"),
-        dataIndex: "startDate",
-        key: "startDate",
-        width: "70px",
-        sorter: (a, b) => a.startDate.localeCompare(b.startDate),
-        render: (text, record, index) => {
-          return Setting.getFormattedDate(text);
-        },
-      },
-      {
-        title: i18next.t("dataset:End date"),
-        dataIndex: "endDate",
-        key: "endDate",
-        width: "70px",
-        sorter: (a, b) => a.endDate.localeCompare(b.endDate),
-        render: (text, record, index) => {
-          return Setting.getFormattedDate(text);
-        },
-      },
-      {
-        title: i18next.t("dataset:Full name"),
-        dataIndex: "fullName",
-        key: "fullName",
-        width: "200px",
-        sorter: (a, b) => a.fullName.localeCompare(b.fullName),
-      },
-      {
-        title: i18next.t("dataset:Organizer"),
-        dataIndex: "organizer",
-        key: "organizer",
-        width: "120px",
-        sorter: (a, b) => a.organizer.localeCompare(b.organizer),
-      },
-      {
-        title: i18next.t("dataset:Location"),
-        dataIndex: "location",
-        key: "location",
-        width: "120px",
-        sorter: (a, b) => a.location.localeCompare(b.location),
-      },
-      {
-        title: i18next.t("dataset:Address"),
-        dataIndex: "address",
-        key: "address",
-        width: "120px",
-        sorter: (a, b) => a.address.localeCompare(b.address),
-      },
-      {
-        title: i18next.t("general:Status"),
-        dataIndex: "status",
-        key: "status",
-        width: "80px",
-        sorter: (a, b) => a.status.localeCompare(b.status),
-      },
-      {
-        title: i18next.t("general:Action"),
-        dataIndex: "action",
-        key: "action",
-        width: "120px",
-        render: (text, record, index) => {
-          return (
-            <div>
-              <Button style={{marginTop: "10px", marginBottom: "10px", marginRight: "10px"}} type="primary" onClick={() => this.props.history.push(`/datasets/${record.name}`)}>{i18next.t("general:Edit")}</Button>
-              <Popconfirm
-                title={`Sure to delete dataset: ${record.name} ?`}
-                onConfirm={() => this.deleteDataset(index)}
-                okText="OK"
-                cancelText="Cancel"
-              >
-                <Button style={{marginBottom: "10px"}} type="danger">{i18next.t("general:Delete")}</Button>
-              </Popconfirm>
-            </div>
-          );
-        },
-      },
-    ];
+    if (datasets === null) {
+      return <div className="flex justify-center items-center h-64">Loading...</div>;
+    }
 
     return (
-      <div>
-        <Table columns={columns} dataSource={datasets} rowKey="name" size="middle" bordered pagination={{pageSize: 100}}
-          title={() => (
-            <div>
-              {i18next.t("general:Datasets")}&nbsp;&nbsp;&nbsp;&nbsp;
-              <Button type="primary" size="small" onClick={this.addDataset.bind(this)}>{i18next.t("general:Add")}</Button>
-            </div>
-          )}
-          loading={datasets === null}
-        />
+      <div className="border rounded-lg">
+        <div className="p-4 border-b bg-white flex items-center justify-between">
+          <h2 className="text-lg font-semibold">{i18next.t("general:Datasets")}</h2>
+          <Button size="sm" onClick={this.addDataset.bind(this)}>{i18next.t("general:Add")}</Button>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{i18next.t("general:Name")}</TableHead>
+              <TableHead>{i18next.t("dataset:Start date")}</TableHead>
+              <TableHead>{i18next.t("dataset:End date")}</TableHead>
+              <TableHead>{i18next.t("dataset:Full name")}</TableHead>
+              <TableHead>{i18next.t("dataset:Organizer")}</TableHead>
+              <TableHead>{i18next.t("dataset:Location")}</TableHead>
+              <TableHead>{i18next.t("dataset:Address")}</TableHead>
+              <TableHead>{i18next.t("general:Status")}</TableHead>
+              <TableHead>{i18next.t("general:Action")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {datasets.map((record, index) => (
+              <TableRow key={record.name}>
+                <TableCell>
+                  <Link to={`/datasets/${record.name}`} className="text-primary hover:underline">
+                    {record.name}
+                  </Link>
+                </TableCell>
+                <TableCell>{Setting.getFormattedDate(record.startDate)}</TableCell>
+                <TableCell>{Setting.getFormattedDate(record.endDate)}</TableCell>
+                <TableCell>{record.fullName}</TableCell>
+                <TableCell>{record.organizer}</TableCell>
+                <TableCell>{record.location}</TableCell>
+                <TableCell>{record.address}</TableCell>
+                <TableCell>{record.status}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => this.props.history.push(`/datasets/${record.name}`)}>
+                      {i18next.t("general:Edit")}
+                    </Button>
+                    <ConfirmDialog
+                      open={this.state.deleteDialogOpen && this.state.datasetToDelete === index}
+                      onOpenChange={(open) => this.setState({ deleteDialogOpen: open, datasetToDelete: open ? index : null })}
+                      title="Delete Dataset"
+                      description={`Sure to delete dataset: ${record.name}?`}
+                      onConfirm={() => this.deleteDataset(index)}
+                    >
+                      <Button size="sm" variant="destructive">
+                        {i18next.t("general:Delete")}
+                      </Button>
+                    </ConfirmDialog>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     );
   }
 
   render() {
     return (
-      <div>
-        <Row style={{width: "100%"}}>
-          <Col span={1}>
-          </Col>
-          <Col span={22}>
-            {
-              this.renderTable(this.state.datasets)
-            }
-          </Col>
-          <Col span={1}>
-          </Col>
-        </Row>
+      <div className="w-full px-4 py-4">
+        <div className="max-w-[95%] mx-auto">
+          {this.renderTable(this.state.datasets)}
+        </div>
+      </div>
+    );
+  }
       </div>
     );
   }

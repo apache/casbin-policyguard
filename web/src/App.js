@@ -1,8 +1,7 @@
 import React, {Component} from "react";
 import {Link, Redirect, Route, Switch, withRouter} from "react-router-dom";
-import {Avatar, BackTop, Dropdown, Layout, Menu} from "antd";
-import {DownOutlined, LogoutOutlined, SettingOutlined} from "@ant-design/icons";
-import "./App.less";
+import { Settings, LogOut, ChevronDown } from "lucide-react";
+import "./App.css";
 import * as Setting from "./Setting";
 import * as AccountBackend from "./backend/AccountBackend";
 import AuthCallback from "./AuthCallback";
@@ -13,8 +12,9 @@ import DatasetEditPage from "./DatasetEditPage";
 import SigninPage from "./SigninPage";
 import i18next from "i18next";
 import SelectLanguageBox from "./SelectLanguageBox";
-
-const {Header, Footer} = Layout;
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Toaster } from "@/components/ui/sonner";
 
 class App extends Component {
   constructor(props) {
@@ -103,131 +103,96 @@ class App extends Component {
       });
   }
 
-  handleRightDropdownClick(e) {
-    if (e.key === "/account") {
-      Setting.openLink(Setting.getMyProfileUrl(this.state.account));
-    } else if (e.key === "/logout") {
-      this.signout();
-    }
-  }
-
   renderAvatar() {
     if (this.state.account.avatar === "") {
       return (
-        <Avatar style={{backgroundColor: Setting.getAvatarColor(this.state.account.name), verticalAlign: "middle"}} size="large">
-          {Setting.getShortName(this.state.account.name)}
+        <Avatar>
+          <AvatarFallback style={{backgroundColor: Setting.getAvatarColor(this.state.account.name)}}>
+            {Setting.getShortName(this.state.account.name)}
+          </AvatarFallback>
         </Avatar>
       );
     } else {
       return (
-        <Avatar src={this.state.account.avatar} style={{verticalAlign: "middle"}} size="large">
-          {Setting.getShortName(this.state.account.name)}
+        <Avatar>
+          <AvatarImage src={this.state.account.avatar} alt={Setting.getShortName(this.state.account.name)} />
+          <AvatarFallback>
+            {Setting.getShortName(this.state.account.name)}
+          </AvatarFallback>
         </Avatar>
       );
     }
   }
 
   renderRightDropdown() {
-    const menu = (
-      <Menu onClick={this.handleRightDropdownClick.bind(this)}>
-        <Menu.Item key="/account">
-          <SettingOutlined />
-          {i18next.t("account:My Account")}
-        </Menu.Item>
-        <Menu.Item key="/logout">
-          <LogoutOutlined />
-          {i18next.t("account:Sign Out")}
-        </Menu.Item>
-      </Menu>
-    );
-
     return (
-      <Dropdown key="/rightDropDown" overlay={menu} className="rightDropDown">
-        <div className="ant-dropdown-link" style={{float: "right", cursor: "pointer"}}>
-          &nbsp;
-          &nbsp;
-          {
-            this.renderAvatar()
-          }
-          &nbsp;
-          &nbsp;
-          {Setting.isMobile() ? null : Setting.getShortName(this.state.account.displayName)} &nbsp; <DownOutlined />
-          &nbsp;
-          &nbsp;
-          &nbsp;
-        </div>
-      </Dropdown>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 px-3 py-2 rounded-md transition-colors">
+          {this.renderAvatar()}
+          {Setting.isMobile() ? null : <span>{Setting.getShortName(this.state.account.displayName)}</span>}
+          <ChevronDown className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => Setting.openLink(Setting.getMyProfileUrl(this.state.account))}>
+            <Settings className="mr-2 h-4 w-4" />
+            {i18next.t("account:My Account")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => this.signout()}>
+            <LogOut className="mr-2 h-4 w-4" />
+            {i18next.t("account:Sign Out")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
   renderAccount() {
-    const res = [];
-
     if (this.state.account === undefined) {
       return null;
     } else if (this.state.account === null) {
-      res.push(
-        <Menu.Item key="/signup" style={{float: "right", marginRight: "20px"}}>
-          <a href={Setting.getSignupUrl()}>
-            {i18next.t("account:Sign Up")}
-          </a>
-        </Menu.Item>
-      );
-      res.push(
-        <Menu.Item key="/signin" style={{float: "right"}}>
-          <a href={Setting.getSigninUrl()}>
-            {i18next.t("account:Sign In")}
-          </a>
-        </Menu.Item>
-      );
-      res.push(
-        <Menu.Item key="/" style={{float: "right"}}>
-          <a href="/">
+      return (
+        <div className="flex items-center gap-4">
+          <a href="/" className="hover:text-gray-600 transition-colors">
             {i18next.t("general:Home")}
           </a>
-        </Menu.Item>
-      );
-    } else {
-      res.push(this.renderRightDropdown());
-      return (
-        <div style={{float: "right", margin: "0px", padding: "0px"}}>
-          {
-            res
-          }
+          <a href={Setting.getSigninUrl()} className="hover:text-gray-600 transition-colors">
+            {i18next.t("account:Sign In")}
+          </a>
+          <a href={Setting.getSignupUrl()} className="hover:text-gray-600 transition-colors">
+            {i18next.t("account:Sign Up")}
+          </a>
         </div>
       );
+    } else {
+      return this.renderRightDropdown();
     }
-
-    return res;
   }
 
   renderMenu() {
-    const res = [];
-
     if (this.state.account === null || this.state.account === undefined) {
-      return [];
+      return null;
     }
 
-    res.push(
-      <Menu.Item key="/">
-        <a href="/">
+    return (
+      <div className="flex items-center gap-6">
+        <a
+          href="/"
+          className={`hover:text-gray-600 transition-colors ${
+            this.state.selectedMenuKey === "/" ? "text-primary font-semibold" : ""
+          }`}
+        >
           {i18next.t("general:Home")}
         </a>
-        {/* <Link to="/">*/}
-        {/*  Home*/}
-        {/* </Link>*/}
-      </Menu.Item>
-    );
-
-    res.push(
-      <Menu.Item key="/datasets">
-        <Link to="/datasets">
+        <Link
+          to="/datasets"
+          className={`hover:text-gray-600 transition-colors ${
+            this.state.selectedMenuKey === "/datasets" ? "text-primary font-semibold" : ""
+          }`}
+        >
           {i18next.t("general:Datasets")}
         </Link>
-      </Menu.Item>
+      </div>
     );
-
-    return res;
   }
 
   renderHomeIfSignedIn(component) {
@@ -252,29 +217,22 @@ class App extends Component {
   renderContent() {
     return (
       <div>
-        <Header style={{padding: "0", marginBottom: "3px"}}>
-          {
-            Setting.isMobile() ? null : (
-              <Link to={"/"}>
-                <div className="logo" />
-              </Link>
-            )
-          }
-          <Menu
-            // theme="dark"
-            mode={"horizontal"}
-            selectedKeys={[`${this.state.selectedMenuKey}`]}
-            style={{lineHeight: "64px"}}
-          >
+        <header className="bg-white border-b border-gray-200 px-4 py-0 mb-1">
+          <div className="flex items-center justify-between h-16">
             {
-              this.renderMenu()
+              Setting.isMobile() ? null : (
+                <Link to={"/"}>
+                  <div className="logo" />
+                </Link>
+              )
             }
-            {
-              this.renderAccount()
-            }
-            <SelectLanguageBox />
-          </Menu>
-        </Header>
+            <div className="flex items-center gap-6 ml-auto">
+              {this.renderMenu()}
+              {this.renderAccount()}
+              <SelectLanguageBox />
+            </div>
+          </div>
+        </header>
         <Switch>
           <Route exact path="/callback" component={AuthCallback} />
           <Route exact path="/" render={(props) => <HomePage account={this.state.account} {...props} />} />
@@ -291,23 +249,17 @@ class App extends Component {
     // https://www.freecodecamp.org/neyarnws/how-to-keep-your-footer-where-it-belongs-59c6aa05c59c/
 
     return (
-      <Footer id="footer" style={
-        {
-          borderTop: "1px solid #e8e8e8",
-          backgroundColor: "white",
-          textAlign: "center",
-        }
-      }>
-        Powered by <a style={{fontWeight: "bold", color: "black"}} target="_blank" rel="noreferrer" href="https://github.com/casbin/caswaf">CasWAF</a>
-      </Footer>
+      <footer id="footer" className="border-t border-gray-200 bg-white text-center py-4">
+        Powered by <a className="font-bold text-black" target="_blank" rel="noreferrer" href="https://github.com/casbin/caswaf">CasWAF</a>
+      </footer>
     );
   }
 
   render() {
     return (
-      <div id="parent-area">
-        <BackTop />
-        <div id="content-wrap">
+      <div id="parent-area" className="relative min-h-screen">
+        <Toaster />
+        <div id="content-wrap" className="pb-[70px]">
           {
             this.renderContent()
           }
