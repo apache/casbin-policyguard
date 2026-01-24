@@ -1,16 +1,11 @@
 import React from "react";
 import * as Setting from "./Setting";
-import {Dropdown, Menu} from "antd";
-import {createFromIconfontCN} from "@ant-design/icons";
-import "./App.less";
-
-const IconFont = createFromIconfontCN({
-  scriptUrl: "//at.alicdn.com/t/font_2680620_ffij16fkwdg.js",
-});
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./components/ui/dropdown-menu";
+import { Globe } from "lucide-react";
 
 const LanguageItems = [
-  {lang: "en", label: "English", icon: "icon-en"},
-  {lang: "zh", label: "中文", icon: "icon-zh"},
+  {lang: "en", label: "English"},
+  {lang: "zh", label: "中文"},
 ];
 
 class SelectLanguageBox extends React.Component {
@@ -22,9 +17,20 @@ class SelectLanguageBox extends React.Component {
   }
 
   render() {
-    return <Dropdown overlay={<Menu>{LanguageItems.map(({lang, label, icon}) => <Menu.Item key={lang} onClick={() => Setting.changeLanguage(lang)}><IconFont type={icon} />{label}</Menu.Item>)}</Menu>}>
-      <div className="language-box"></div>
-    </Dropdown>;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex items-center justify-center w-11 h-11 hover:bg-gray-100 rounded-md transition-colors cursor-pointer">
+          <Globe className="h-5 w-5" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {LanguageItems.map(({lang, label}) => (
+            <DropdownMenuItem key={lang} onClick={() => Setting.changeLanguage(lang)}>
+              {label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
   }
 }
 

@@ -1,15 +1,71 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Roboto", "Oxygen",
-    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-    sans-serif !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Roboto", "Oxygen",
+      "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+      sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+      monospace;
+  }
 }
 
 .logo {
@@ -17,17 +73,8 @@ code {
   background-size: 108px, 33px;
   width: 108px;
   height: 27px;
-  /*background: rgba(0, 0, 0, 0.2);*/
   margin: 17px 10px 16px 20px;
   float: left;
-}
-
-.ant-table.ant-table-middle .ant-table-title, .ant-table.ant-table-middle .ant-table-footer, .ant-table.ant-table-middle thead > tr > th, .ant-table.ant-table-middle tbody > tr > td {
-  padding: 1px 8px !important;
-}
-
-.ant-list-sm .ant-list-item {
-  padding: 2px !important;
 }
 
 .highlight-row {
@@ -36,26 +83,6 @@ code {
 
 .alert-row {
   background: #ffccc7;
-}
-
-/*http://react-china.org/t/topic/33846/3*/
-.ant-table-header {
-  scrollbar-color:transparent transparent
-}
-.ant-table-header::-webkit-scrollbar {
-  background-color:transparent
-}
-
-.import-output {
-  height: 500px;
-}
-
-.CodeMirror {
-  height: 100% !important;
-}
-
-.App {
-  padding: 20px;
 }
 
 .red-row {
@@ -68,13 +95,4 @@ code {
 
 .green-row {
   background: #d9f7be;
-}
-
-/*https://stackoverflow.com/questions/64961752/how-do-i-change-the-color-of-selected-menu-item-in-ant-design*/
-/*.conferenceMenu > .ant-menu-item-selected {*/
-/*  background-color: rgb(230,247,255) !important;*/
-/*}*/
-
-.conferenceMenu {
-  background-color: rgb(242,242,242) !important;
 }
